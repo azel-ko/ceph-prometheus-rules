@@ -5,7 +5,8 @@ groups:
     expr: ceph_health_status == 1
     for: 1m
     labels:
-      severity: page
+      severity: warning
+      job: ceph
     annotations:
       summary: "Ceph 健康警告"
       description: "Ceph 总体健康"
@@ -13,7 +14,8 @@ groups:
     expr: ceph_health_status > 1
     for: 1m
     labels:
-      severity: page
+      severity: critical
+      job: ceph
     annotations:
       summary: "Ceph 健康错误"
       description: "Ceph 集群健康状态出现错误"
@@ -21,7 +23,8 @@ groups:
     expr: (ceph_osd_stat_bytes_used / ceph_osd_stat_bytes) * 100 > 85
     for: 1m
     labels:
-      severity: page
+      severity: warning
+      job: ceph
     annotations:
       summary: "磁盘容量接近满载"
       description: "这显示了有多少磁盘已经达到或超过了 85% 的使用率。对于使用 filestore（XFS）支持的 OSD，超过此阈值可能会导致性能下降"
@@ -29,7 +32,8 @@ groups:
     expr: ceph_osd_up < 0.5
     for: 1m
     labels:
-      severity: page
+      severity: warning
+      job: ceph
     annotations:
       summary: "Ceph OSD（对象存储守护进程）已停止运行"
       description: "这表示集群中当前有一个或多个 OSD（对象存储守护进程） 被标记为停止运行"
@@ -37,7 +41,8 @@ groups:
     expr: count by(instance) (ceph_disk_occupation * on(ceph_daemon) group_right(instance) ceph_osd_up == 0) - count by(instance) (ceph_disk_occupation) == 0
     for: 1m
     labels:
-      severity: page
+      severity: warning
+      job: ceph
     annotations:
       summary: "Ceph OSD（对象存储守护进程）主机已停止运行"
       description: "这表示集群中当前有一个或多个 OSD 主机处于宕机状态"
@@ -45,7 +50,8 @@ groups:
     expr: max(ceph_osd_numpg) > scalar(ceph_pg_active)
     for: 1m
     labels:
-      severity: page
+      severity: warning
+      job: ceph
     annotations:
       summary: "Ceph 放置组阻塞"
       description: "这表示有一些 PG(放置组) 处于阻塞状态，需要手动干预解决"
@@ -53,7 +59,8 @@ groups:
     expr: max(sum(ceph_osd_stat_bytes - ceph_osd_stat_bytes_used)) * 0.9 < scalar(max(sum by (instance) (ceph_osd_stat_bytes + on (ceph_daemon) group_left (instance) (ceph_disk_occupation*0))))
     for: 1m
     labels:
-      severity: page
+      severity: warning
+      job: ceph
     annotations:
       summary: "检查 OSD 主机失联"
       description: "集群已经使用了90%的存储容量，不足以支撑最大的OSD主机出现故障"
@@ -61,7 +68,8 @@ groups:
     expr: ((irate(node_disk_read_time_seconds_total[5m]) / clamp_min(irate(node_disk_reads_completed_total[5m]), 1) + irate(node_disk_write_time_seconds_total[5m]) / clamp_min(irate(node_disk_writes_completed_total[5m]), 1)) and on (instance, device) ceph_disk_occupation) > 1
     for: 1m
     labels:
-      severity: page
+      severity: warning
+      job: ceph
     annotations:
       summary: "OSD 响应缓慢"
       description: "这表示一些 OSD 的延迟超过了 1 秒"
@@ -69,7 +77,8 @@ groups:
     expr: sum by (instance, device) (irate(node_network_receive_drop_total{device=~"(eth|en|bond|ib|mlx|p).*"}[5m]) + irate(node_network_receive_errs_total{device=~"(eth|en|bond|ib|mlx|p).*"}[5m]) + irate(node_network_transmit_drop_total{device=~"(eth|en|bond|ib|mlx|p).*"}[5m]) + irate(node_network_transmit_errs_total{device=~"(eth|en|bond|ib|mlx|p).*"}[5m])) > 10
     for: 1m
     labels:
-      severity: page
+      severity: warning
+      job: ceph
     annotations:
       summary: "网络错误"
       description: "这表示在5分钟的时间间隔内看到了超过10个丢失/错误的数据包"
@@ -77,7 +86,8 @@ groups:
     expr: (ceph_pool_stored / (ceph_pool_stored + ceph_pool_max_avail) * 100 + on (pool_id) group_left (name) (ceph_pool_metadata*0)) > 85
     for: 1m
     labels:
-      severity: page
+      severity: warning
+      job: ceph
     annotations:
       summary: "池容量不足"
       description: "这表示某个池的容量较低"
@@ -85,15 +95,26 @@ groups:
     expr: ceph_mon_quorum_status != 1
     for: 1m
     labels:
-      severity: page
+      severity: warning
+      job: ceph
     annotations:
       summary: "Ceph MON（监视器）已停止运行"
       description: "这表示集群中当前有一个或多个MON（监视器）被标记为停止运行"
   - alert: Cluster Capacity Low
+    expr: sum(ceph_osd_stat_bytes_used) / sum(ceph_osd_stat_bytes) > 0.7
+    for: 1m
+    labels:
+      severity: warning
+      job: ceph
+    annotations:
+      summary: "集群容量不足"
+      description: "这表示原始已用空间已经超过了 Ceph 集群的 70% 容量阈值"
+  - alert: Cluster Capacity Low
     expr: sum(ceph_osd_stat_bytes_used) / sum(ceph_osd_stat_bytes) > 0.85
     for: 1m
     labels:
-      severity: page
+      severity: critical
+      job: ceph
     annotations:
       summary: "集群容量不足"
       description: "这表示原始已用空间已经超过了 Ceph 集群的 85% 容量阈值"
@@ -101,7 +122,8 @@ groups:
     expr: ceph_osd_numpg > 275
     for: 1m
     labels:
-      severity: page
+      severity: warning
+      job: ceph
     annotations:
       summary: "拥有高 PG 计数的 OSD（对象存储守护进程）"
       description: "这表示有一些 OSD 具有高 PG 计数（275+）。"
